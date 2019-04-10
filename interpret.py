@@ -21,6 +21,14 @@ class printErrors:
         sys.stderr.write('{} Error code is {} \n'.format(errorMessage, errorCode))
         sys.exit(errorCode)
 
+class Variable:
+    """ Class representing variable """
+    def __init__(self, var):
+        self.name = var.split("@", 1)
+        self.dataType = None
+        self.value = None
+
+
 #class for control arguments
 class arguments(printErrors):
 
@@ -118,6 +126,10 @@ class interpret(printErrors):
 
     def __init__(self):
         # frames
+        self.GlobFrame = []
+        self.LocFrame = None
+        self.TempFrame = None
+
         self.GF = {} # global frame exists all time
         self.TF = None
         self.LF = []
@@ -132,31 +144,24 @@ class interpret(printErrors):
                 # <symb1>
                 self.isSymbOk(1, instruct)
 
-                varName = instruct[0].text.split('@', 1)
-                varFrame = varName[0]
-                varName = varName[1]
-                if varFrame == "GF":
-                    if varName in self.GF.keys():
-                        if instruct[1].attrib['type'] == "var":
-                            varName_1 = instruct[1].text.split('@', 1)
-                            varFrame_1 = varName_1[0]
-                            varName_1 = varName_1[1]
-                            if varFrame_1 == "GF":
-                                self.GF[varName] = self.GF[varName_1]
-                            elif varFrame_1 == "LF":
-                                pass
-                            elif varFrame_1 == "TF":
-                                pass
-                        else:
-                            self.GF[varName] = instruct[1].text
-                    else:
-                        self.printError(varName + " is undefined", 54)
+                writeSuccess = False
+                varFrameName = instruct[0].text.split('@', 1)
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if varFrameName[1] == elem.name[1]: # if we find defined variable fill it by type and value
+                            writeSuccess = True
+                            elem.dataType = instruct[1].attrib['type']
+                            elem.value = instruct[1].text
+                    if not writeSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
 
-                elif varFrame == "LF":
+                elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
+                    # TODO: fill
 
-                elif varFrame == "TF":
+                elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
+                    # TODO: fill
 
             elif instruct.attrib['opcode'] == "CREATEFRAME":
                 self.controlArgCount(instruct, 0)
@@ -183,19 +188,41 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 1)
                 # <var>
                 self.controlArg(instruct[0].attrib, "var", instruct[0].text)
-                #if we in global frame
-                varName = instruct[0].text.split('@', 1)
-                varFrame = varName[0]
-                varName = varName[1]
-                if varFrame == "GF":
-                    varName = instruct[0].text.split('@', 1)
-                    varName = varName[1]
-                    self.GF.update({varName : None})
-                elif varFrame == "LF":
-                    self.isFrameExist("LF")
 
-                elif varFrame == "TF":
+                var = Variable(instruct[0].text)
+                if var.name[0] == "GF":
+                    for elem in self.GlobFrame: # control if variable is already exist
+                        if var.name[1] == elem.name[1]:
+                            self.printError("Redefenition of variable", 52) # TODO Check ret code
+                    self.GlobFrame.append(var)
+
+                elif var.name[0] == "LF":
+                    self.isFrameExist("LF")
+                    for elem in self.LocFrame: # control if variable is already exist
+                        if var.name[1] == elem.name[1]:
+                            self.printError("Redefenition of variable", 52) # TODO Check ret code
+                    self.LocFrame.append(var)
+
+                elif var.name[0] == "TF":  #TODO check if its possible
                     self.isFrameExist("TF")
+                    for elem in self.TempFrame: # control if variable is already exist
+                        if var.name[1] == elem.name[1]:
+                            self.printError("Redefenition of variable", 52) # TODO Check ret code
+                    self.TempFrame.append(var)
+
+                #if we in global frame
+                # varName = instruct[0].text.split('@', 1)
+                # varFrame = varName[0]
+                # varName = varName[1]
+                # if varFrame == "GF":
+                #     varName = instruct[0].text.split('@', 1)
+                #     varName = varName[1]
+                #     self.GF.update({varName : None})
+                # elif varFrame == "LF":
+                #     self.isFrameExist("LF")
+                #
+                # elif varFrame == "TF":
+                #     self.isFrameExist("TF")
 
                 #print(self.GF)
 
@@ -707,10 +734,10 @@ class interpret(printErrors):
 
     def isFrameExist(self, frame):
         if frame == "LF":
-            if not self.LF:
+            if self.LocFrame == None:
                 self.printError("Undefined frame (Local frame)",55)
         elif frame == "TF":
-            if self.TF == None:
+            if self.TempFrame == None:
                 self.printError("Undefined frame (Temporary frame)",55)
 
 def main():
