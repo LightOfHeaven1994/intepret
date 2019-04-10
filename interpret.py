@@ -28,6 +28,12 @@ class Variable:
         self.dataType = None
         self.value = None
 
+class sStack:
+    """ Class representing stack """
+    def __init__(self, dataType, value):
+        self.dataType = dataType
+        self.value = value
+
 
 #class for control arguments
 class arguments(printErrors):
@@ -129,11 +135,12 @@ class interpret(printErrors):
         self.GlobFrame = []
         self.LocFrame = None
         self.TempFrame = None
+        self.stack = []
 
         self.GF = {} # global frame exists all time
         self.TF = None
         self.LF = []
-        self.stack = []
+
 
     def checkInstruct(self, tree):
         for instruct in tree:
@@ -241,26 +248,31 @@ class interpret(printErrors):
                 # <symb>
                 self.isSymbOk(0, instruct)
                 if instruct[0].attrib['type'] == "var":
-                    varName = instruct[0].text.split('@', 1)
-                    varFrame = varName[0]
-                    varName = varName[1]
-                    if varFrame == "GF":
-                        if varName in self.GF.keys():
-                            if self.GF[varName] == None:
-                                self.printError("Uninitialized variable " + varName + ".", 56)
-                            self.stack.append(self.GF[varName])
-                        else:
-                            self.printError(varName + " is undefined.", 54)
-                    elif varFrame == "LF":
+                    varFrameName = instruct[0].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if elem.name[1] == varFrameName[1]:
+                                if elem.value == None:
+                                    self.printError("Uninitialized variable " + varName + ".", 56)
+                                var = sStack(elem.dataType, elem.value)
+                                self.stack.append(var)
+                                findSuccess = True
+
+                    elif varFrameName[0] == "LF":
                         isFrameExist("LF")
                         #TODO if carName is empty
 
-                    elif varFrame == "TF":
+                    elif varFrameName[0] == "TF":
                         self.isFrameExist("TF")
                         #TODO if carName is empty
 
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
                 else:
-                    self.stack.append(instruct[0].text)
+                    var = sStack(instruct[0].attrib['type'], instruct[0].text)
+                    self.stack.append(var)
+
 
             elif instruct.attrib['opcode'] == "POPS":
                 self.controlArgCount(instruct, 1)
@@ -268,22 +280,26 @@ class interpret(printErrors):
                 self.controlArg(instruct[0].attrib, "var", instruct[0].text)
                 if not self.stack:
                     self.printError("Stack is empty", 56)
-                stackValue = self.stack.pop(-1)
 
-                varName = instruct[0].text.split('@', 1)
-                varFrame = varName[0]
-                varName = varName[1]
-                if varFrame == "GF":
-                    if varName in self.GF.keys():
-                        self.GF[varName] = stackValue
-                    else:
-                        self.printError(varName + " is undefined.", 54)
+                stackTop = self.stack.pop(-1)
 
-                elif varFrame == "LF":
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            elem.dataType = stackTop.dataType
+                            elem.value = stackTop.value
+                            findSuccess = True
+
+                elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
-
-                elif varFrame == "TF":
+                    # TODO:
+                elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
+                    # TODO:
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
 
             elif (instruct.attrib['opcode'] == "ADD" or instruct.attrib['opcode'] == "SUB"
             or instruct.attrib['opcode'] == "MUL" or instruct.attrib['opcode'] == "IDIV"):
