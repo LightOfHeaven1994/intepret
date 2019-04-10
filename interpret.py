@@ -15,6 +15,7 @@ import re
 #LIST TODO
 # 1) all variables are defined by instr DEFVAR
 # 2) Do we need to check if exists TF or LF before work with every instructions
+# 3) test_move_into_undefined_var_in_lf.src
 
 class printErrors:
     def printError(self, errorMessage, errorCode):
@@ -805,7 +806,7 @@ class interpret(printErrors):
                     findSuccess = False
                     if varFrameName[0] == "GF":
                         for elem in self.GlobFrame:
-                            if elem.value == None and None:
+                            if elem.value == None and elem.dataType == None:
                                 self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
                             if elem.name[1] == varFrameName[1]:
                                 print(elem.value, end = '\n')
@@ -813,7 +814,7 @@ class interpret(printErrors):
                     elif varFrameName[0] == "LF":
                         self.isFrameExist("LF")
                         for elem in self.LocFrame:
-                            if elem.value == None and None:
+                            if elem.value == None and elem.dataType == None:
                                 self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
                             if elem.name[1] == varFrameName[1]:
                                 print(elem.value, end = '\n')
