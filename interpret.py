@@ -180,7 +180,33 @@ class interpret(printErrors):
 
                 elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
-                    # TODO: fill
+                    for elem in self.LocFrame:
+                        if varFrameName[1] == elem.name[1]: # if we find defined variable fill it by type and value
+                            writeSuccess = True
+                            if instruct[1].attrib['type'] == "var":
+                                writeSuccess_1 = False
+                                varFrameName_1 = instruct[1].text.split('@', 1)
+                                if varFrameName_1[0] == "GF":
+                                    for element in self.GlobFrame:
+                                        if varFrameName_1[1] == element.name[1]:
+                                            elem.dataType = element.dataType
+                                            elem.value = element.value
+                                            writeSuccess_1 = True
+                                    if not writeSuccess_1:
+                                        self.printError(varFrameName_1[1] + " is undefined", 54)
+                                elif varFrameName_1[0] == "LF":
+                                    for element in self.LocFrame:
+                                        if varFrameName_1[1] == element.name[1]:
+                                            elem.dataType = element.dataType
+                                            elem.value = element.value
+                                            writeSuccess_1 = True
+                                    if not writeSuccess_1:
+                                        self.printError(varFrameName_1[1] + " is undefined", 54)
+                            else:
+                                elem.dataType = instruct[1].attrib['type']
+                                elem.value = instruct[1].text
+                    if not writeSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
 
                 elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
@@ -212,11 +238,15 @@ class interpret(printErrors):
 
             elif instruct.attrib['opcode'] == "PUSHFRAME":
                 self.controlArgCount(instruct, 0)
-                #print(self.TF)
                 self.isFrameExist("TF")
 
+                #fill Local frame
+                self.LocFrame = []
+                for elem in self.TempFrame:
+                    elem.name[0] = "LF"
+                    self.LocFrame.append(elem)
+
                 #fill LF
-                self.LocFrame.append("1")
                 self.TempFrame = None
 
             elif instruct.attrib['opcode'] == "POPFRAME":
@@ -390,7 +420,7 @@ class interpret(printErrors):
                             elif instruction == "IDIV":
                                 if op2 == 0:
                                     self.printError("Division by zero", 57)
-                                elem.value = op1 / op2
+                                elem.value = op1 // op2
                             findSuccess = True
                 elif varFrameName == "LF":
                     pass # TODO:
@@ -708,7 +738,48 @@ class interpret(printErrors):
                 # <var>
                 self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
                 # <symb> is int
-                self.controlArg(instruct[1].attrib['type'], "int", instruct[1].text, "INT2CHAR")
+
+                if instruct[1].attrib['type'] == "var":
+                    self.controlArg(instruct[1].attrib['type'], "var", instruct[0].text)
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Expected argument of type 'bool'", 53)
+                                self.controlArg(elem.dataType, "int", elem.value, "INT2CHAR")
+                                op1 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[1].attrib['type'], "int", instruct[1].text, "INT2CHAR")
+                    op1 = instruct[1].text
+
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            elem.value = chr(int(op1))
+                            findSuccess = True
+                elif varFrameName == "LF":
+                    pass # TODO:
+                elif varFrameName == "TF":
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
 
             elif instruct.attrib['opcode'] == "STRI2INT":
                 self.controlArgCount(instruct, 3)
@@ -734,13 +805,19 @@ class interpret(printErrors):
                     findSuccess = False
                     if varFrameName[0] == "GF":
                         for elem in self.GlobFrame:
-                            if elem.value == None:
+                            if elem.value == None and None:
                                 self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
                             if elem.name[1] == varFrameName[1]:
                                 print(elem.value, end = '\n')
                                 findSuccess = True
                     elif varFrameName[0] == "LF":
                         self.isFrameExist("LF")
+                        for elem in self.LocFrame:
+                            if elem.value == None and None:
+                                self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                            if elem.name[1] == varFrameName[1]:
+                                print(elem.value, end = '\n')
+                                findSuccess = True
 
                     elif varFrameName[0] == "TF":
                         self.isFrameExist("TF")
@@ -1034,7 +1111,7 @@ class interpret(printErrors):
                 # control integer for INT2CHAR instruction
                 if exitInstr and (number > 49 or number < 0):
                     self.printError("Invalid exit code.", 57)
-                if (int2char or str2int or getcharInstr) and number < 0: # error out of range
+                if (getcharInstr and number < 0) or ((int2char or str2int) and (number < 0 or number > 255)): # error out of range
                     self.printError("Argument is not valid integer for " + args[0] + " instruction.", 58)
             else:
                 self.printError("Expects argument of type 'int' but argument is type of " + str(actType) + ".", 53)
@@ -1068,14 +1145,6 @@ class interpret(printErrors):
     def isSymbOk(self, x, instruct):
         typeSymb = instruct[x].attrib['type']
         instructName = instruct.attrib['opcode']
-
-        if instructName == "LT" or instructName == "GT": #TODO control if "var" is possile type
-            if (typeSymb == "var" or typeSymb == "string"
-            or typeSymb == "int" or typeSymb == "bool"):
-                self.controlArg(instruct[x].attrib['type'], typeSymb, instruct[x].text)
-                return instruct[x].text
-            else:
-                self.printError("Expects argument of type 'symb' (not nil) but argument is type of " + str(instruct[x].attrib['type']) + ".", 53)
 
         if instructName == "STRI2INT": #TODO CHECK
             if typeSymb == "var" or (typeSymb == "string" and x == 1) or (typeSymb == "int" and x == 2):
