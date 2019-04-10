@@ -105,8 +105,9 @@ class treeXML(printErrors):
             or int(instruct.attrib['order']) != orderCounter or "opcode" not in instruct.attrib):
                 self.printError("Bad XML format.", 31)
             for arg in instruct:
-                if len(arg.attrib) != 1 or len(arg.text.split()) == 2:
-                    self.printError("Bad XML format.", 31)
+                if arg.attrib['type'] != "string" and not arg.text == "": # prevent split empty string error
+                    if len(arg.attrib) != 1 or len(arg.text.split()) == 2:
+                        self.printError("Bad XML format.", 31)
             orderCounter = orderCounter + 1
 
     def putElementsInOrder(self, tree):
@@ -133,8 +134,8 @@ class interpret(printErrors):
     def __init__(self):
         # frames
         self.GlobFrame = []
-        self.LocFrame = None
         self.TempFrame = None
+        self.LocFrame = None
         self.stack = []
 
         self.GF = {} # global frame exists all time
@@ -188,7 +189,7 @@ class interpret(printErrors):
 
             elif instruct.attrib['opcode'] == "CREATEFRAME":
                 self.controlArgCount(instruct, 0)
-                self.TF = {}
+                self.TempFrame = []
 
             elif instruct.attrib['opcode'] == "PUSHFRAME":
                 self.controlArgCount(instruct, 0)
@@ -196,8 +197,8 @@ class interpret(printErrors):
                 self.isFrameExist("TF")
 
                 #fill LF
-                self.LF.append("1")
-                self.TF = None
+                self.LocFrame.append("1")
+                self.TempFrame = None
 
             elif instruct.attrib['opcode'] == "POPFRAME":
                 self.controlArgCount(instruct, 0)
@@ -205,7 +206,7 @@ class interpret(printErrors):
 
                 #move lf do tf
                 #lf = []
-                self.TF = {}
+                self.TempFrame = []
 
             elif instruct.attrib['opcode'] == "DEFVAR":
                 self.controlArgCount(instruct, 1)
@@ -254,7 +255,7 @@ class interpret(printErrors):
                         for elem in self.GlobFrame:
                             if elem.name[1] == varFrameName[1]:
                                 if elem.value == None:
-                                    self.printError("Uninitialized variable " + varName + ".", 56)
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
                                 var = sStack(elem.dataType, elem.value)
                                 self.stack.append(var)
                                 findSuccess = True
@@ -570,22 +571,70 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 3)
                 # <var>
                 self.controlArg(instruct[0].attrib, "var", instruct[0].text)
+
                 # <symb1> is strig
-                self.isSymbOk(1, instruct)
-                varName = instruct[1].text.split('@', 1)
-                varFrame = varName[0]
-                varName = varName[1]
-                if varFrame == "GF":
-                    if isinstance(self.GF[varName], str):
-                        print("HURA") #TODO bool DEBUG
-                elif varFrame == "LF":
-                    self.isFrameExist("LF")
+                if instruct[1].attrib['type'] == "var":
+                    self.controlArg(instruct[1].attrib, "var", instruct[1].text)
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType != "string":
+                                    self.printError("Expected argument of type 'string'", 53)
+                                op1 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[1].attrib, "string", instruct[1].text)
+                    op1 = instruct[1].text
 
-                elif varFrame == "TF":
-                    self.isFrameExist("TF")
+                if instruct[2].attrib['type'] == "var":
+                    self.controlArg(instruct[2].attrib, "var", instruct[2].text)
+                    varFrameName = instruct[2].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType != "string":
+                                    self.printError("Expected argument of type 'string'", 53)
+                                op2 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[2].attrib, "string", instruct[2].text)
+                    op2 = instruct[2].text
 
-                # <symb2> is string
-                self.isSymbOk(2, instruct)
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            preventEmptyString = lambda x: "" if x == None else x # prevent empty string == None error
+                            elem.value = preventEmptyString(op1) + preventEmptyString(op2)
+                            findSuccess = True
+                elif varFrameName == "LF":
+                    pass # TODO:
+                elif varFrameName == "TF":
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
+
 
             elif instruct.attrib['opcode'] == "STRLEN":
                 self.controlArgCount(instruct, 2)
@@ -683,6 +732,8 @@ class interpret(printErrors):
 
         elif type == "string":
             if actType['type'] == type:
+                if text == None: # prevent empty string == None error
+                    return
                 if not re.match("^(\\\d{3,}|[^\\\\\s])*", text):
                     self.printError("Argument is not string.", 53)
             else:
@@ -709,12 +760,6 @@ class interpret(printErrors):
         typeSymb = instruct[x].attrib['type']
         instructName = instruct.attrib['opcode']
 
-        if instructName == "CONCAT":
-            if typeSymb == "var" or typeSymb == "string":
-                self.controlArg(instruct[x].attrib, typeSymb, instruct[x].text)
-            else:
-                self.printError("Expects argument of type 'symb' (only string) but argument is type of " + str(instruct[x].attrib['type']) + ".", 53)
-
         if instructName == "LT" or instructName == "GT": #TODO control if "var" is possile type
             if (typeSymb == "var" or typeSymb == "string"
             or typeSymb == "int" or typeSymb == "bool"):
@@ -731,6 +776,8 @@ class interpret(printErrors):
 
         if (typeSymb == "var" or typeSymb == "string"
         or typeSymb == "int" or typeSymb == "bool" or typeSymb == "nil"):
+            if instruct[x].text == None: # prevent empty string == None error
+                instruct[x].text = ""
             self.controlArg(instruct[x].attrib, typeSymb, instruct[x].text)
         else:
             self.printError("Expects argument of type 'symb' but argument is type of " + str(instruct[x].attrib['type']) + ".", 53)
