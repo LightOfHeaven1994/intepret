@@ -1,0 +1,4 @@
+.IPPcode
+# WRITE neprovadi za vystupem odradkovani, pokud to neni diktovano argumenty
+WRITE int@0
+WRITE string@abc
