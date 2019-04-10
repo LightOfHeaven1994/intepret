@@ -800,7 +800,41 @@ class interpret(printErrors):
                 #TODO
             elif instruct.attrib['opcode'] == "EXIT":
                 self.controlArgCount(instruct, 1)
-                #TODO
+
+                if instruct[0].attrib['type'] == "var":
+                    self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
+                    varFrameName = instruct[0].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Expected argument of type 'int'", 53)
+                                self.controlArg(elem.dataType, "int", elem.value, "EXIT")
+                                exit(int(elem.value))
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        for elem in self.TempFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Expected argument of type 'int'", 53)
+                                self.controlArg(elem.dataType, "int", elem.value, "EXIT")
+                                exit(int(elem.value))
+                                findSuccess = True
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[0].attrib['type'], "int", instruct[0].text, "EXIT")
+                    exit(int(instruct[0].text))
+
             elif instruct.attrib['opcode'] == "DPRINT":
                 self.controlArgCount(instruct, 1)
             elif instruct.attrib['opcode'] == "BREAK":
@@ -821,17 +855,18 @@ class interpret(printErrors):
                 if not re.match("^((_|-|\$|&|%|\*|!|\?)|[A-z])([A-z0-9]|_|\-|\$|&|%|\*|!|\?)*", frameName[1]):
                     self.printError("Bad name of variable", 53)
             else:
-                self.printError("Expects argument of type 'var' but argument is type of " + str(actType['type']) + ".", 53)
+                self.printError("Expects argument of type 'var' but argument is type of " + str(actType) + ".", 53)
 
         elif type is "label":
             if actType == type:
                 if not re.match("^((_|-|\$|&|%|\*|!|\?)|[A-z])([A-z0-9]|_|\-|\$|&|%|\*|!|\?)*", text):
                     self.printError("Bad name of variable", 53)
             else:
-                self.printError("Expects argument of type 'label' but argument is type of " + str(actType['type']) + ".", 53)
+                self.printError("Expects argument of type 'label' but argument is type of " + str(actType) + ".", 53)
         elif type == "int":
             int2char = False
             str2int = False
+            exitInstr = False
 
             if actType == type:
                 try:
@@ -839,6 +874,8 @@ class interpret(printErrors):
                         int2char = True
                     elif args[0] == "STRI2INT":
                         str2int = True
+                    elif args[0] == "EXIT":
+                        exitInstr = True
                 except:
                     pass
                 try:
@@ -846,10 +883,12 @@ class interpret(printErrors):
                 except:
                     self.printError("Argument is not integer.", 53)
                 # control integer for INT2CHAR instruction
+                if exitInstr and (number > 49 or number < 0):
+                    self.printError("Invalid exit code.", 57)
                 if (int2char == True or str2int == True) and number < 0:
                     self.printError("Argument is not valid integer for " + args[0] + " instruction.", 58)
             else:
-                self.printError("Expects argument of type 'int' but argument is type of " + str(actType['type']) + ".", 53)
+                self.printError("Expects argument of type 'int' but argument is type of " + str(actType) + ".", 53)
 
         elif type == "string":
             if actType == type:
@@ -858,13 +897,13 @@ class interpret(printErrors):
                 if not re.match("^(\\\d{3,}|[^\\\\\s])*", text):
                     self.printError("Argument is not string.", 53)
             else:
-                self.printError("Expects argument of type 'string' but argument is type of " + str(actType['type']) + ".", 53)
+                self.printError("Expects argument of type 'string' but argument is type of " + str(actType) + ".", 53)
         elif type == "bool":
             if actType == type:
                 if not re.match("^(false|true)$", text):
                     self.printError("Argument is not bool.", 53)
             else:
-                self.printError("Expects argument of type 'bool' but argument is type of " + str(actType['type']) + ".", 53)
+                self.printError("Expects argument of type 'bool' but argument is type of " + str(actType) + ".", 53)
 
         elif type == "type":
             pass
@@ -875,7 +914,7 @@ class interpret(printErrors):
                 if not text == "nil":
                     self.printError("Argument is not nil.", 53)
             else:
-                self.printError("Expects argument of type 'nil' but argument is type of " + str(actType['type']) + ".", 53)
+                self.printError("Expects argument of type 'nil' but argument is type of " + str(actType) + ".", 53)
 
     def isSymbOk(self, x, instruct):
         typeSymb = instruct[x].attrib['type']
