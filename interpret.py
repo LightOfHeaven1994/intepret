@@ -468,10 +468,46 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 2)
                 # <var>
                 self.controlArg(instruct[0].attrib, "var", instruct[0].text)
+
                 # <symb1>
-                symb_1 = self.isSymbOk(1, instruct)
-                # <symb2>
-                #print(symb_1, symb_2)
+                if instruct[1].attrib['type'] == "var":
+                    self.controlArg(instruct[1].attrib, "var", instruct[0].text)
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType != "bool":
+                                    self.printError("Expected argument of type 'bool'", 53)
+                                op1 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[1].attrib, "bool", instruct[1].text)
+                    op1 = instruct[1].text
+
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            convertToBool = lambda x: True if x == "true" else False
+                            elem.value = not convertToBool(op1)
+                            findSuccess = True
+                elif varFrameName == "LF":
+                    pass # TODO:
+                elif varFrameName == "TF":
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
 
             elif instruct.attrib['opcode'] == "INT2CHAR":
                 self.controlArgCount(instruct, 2)
