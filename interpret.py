@@ -210,21 +210,6 @@ class interpret(printErrors):
                             self.printError("Redefenition of variable", 52) # TODO Check ret code
                     self.TempFrame.append(var)
 
-                #if we in global frame
-                # varName = instruct[0].text.split('@', 1)
-                # varFrame = varName[0]
-                # varName = varName[1]
-                # if varFrame == "GF":
-                #     varName = instruct[0].text.split('@', 1)
-                #     varName = varName[1]
-                #     self.GF.update({varName : None})
-                # elif varFrame == "LF":
-                #     self.isFrameExist("LF")
-                #
-                # elif varFrame == "TF":
-                #     self.isFrameExist("TF")
-
-                #print(self.GF)
 
             elif instruct.attrib['opcode'] == "CALL":
                 self.controlArgCount(instruct, 1)
@@ -288,54 +273,67 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 3)
                 # <var>
                 self.controlArg(instruct[0].attrib, "var", instruct[0].text)
-                # <symb1> should be int or var
-                self.controlInt(instruct[1].attrib, "var", "int", instruct[1].text)
-                # <symb1> should be int or var
-                self.controlInt(instruct[2].attrib, "var", "int", instruct[2].text)
 
                 if instruct[1].attrib['type'] == "var":
-                    varName = instruct[1].text.split('@', 1)
-                    varFrame = varName[0]
-                    varName = varName[1]
-                    if varFrame == "GF":
-                        op1 = int(self.GF[varName])
-                    elif varFrame == "LF":
-                        self.isFrameExist("LF")
-
-                    elif varFrame == "TF":
-                        self.isFrameExist("TF")
-
+                    self.controlArg(instruct[1].attrib, "var", instruct[1].text)
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if elem.name[1] == varFrameName[1]:
+                                if elem.dataType != "int":
+                                    self.printError("Argument is not integer.", 53)
+                                op1 = int(elem.value)
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        pass # TODO:
+                    elif varFrameName[0] == "TF":
+                        pass # TODO:
                 else:
+                    self.controlArg(instruct[1].attrib, "int", instruct[0].text)
                     op1 = int(instruct[1].text)
 
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
+
                 if instruct[2].attrib['type'] == "var":
-                    varName = instruct[2].text.split('@', 1)
-                    varFrame = varName[0]
-                    varName = varName[1]
-                    if varFrame == "GF":
-                        op2 = int(self.GF[varName])
-                    elif varFrame == "LF":
-                        self.isFrameExist("LF")
-
-                    elif varFrame == "TF":
-                        self.isFrameExist("TF")
-
+                    self.controlArg(instruct[2].attrib, "var", instruct[2].text)
+                    varFrameName = instruct[2].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if elem.name[1] == varFrameName[1]:
+                                if elem.dataType != "int":
+                                    self.printError("Argument is not integer.", 53)
+                                op2 = int(elem.value)
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        pass # TODO:
+                    elif varFrameName[0] == "TF":
+                        pass # TODO:
                 else:
+                    self.controlArg(instruct[2].attrib, "int", instruct[2].text)
                     op2 = int(instruct[2].text)
 
-                varName = instruct[0].text.split('@', 1)
-                varFrame = varName[0]
-                varName = varName[1]
-                if varFrame == "GF":
-                    self.GF[varName] = op1 + op2
-                elif varFrame == "LF":
-                    self.isFrameExist("LF")
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
 
-                elif varFrame == "TF":
-                    self.isFrameExist("TF")
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            elem.dataType = "int"
+                            elem.Value = op1 + op2
+                            findSuccess = True
+                elif varFrameName == "LF":
+                    pass # TODO:
+                elif varFrameName == "TF":
+                    pass # TODO:
 
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
 
-                #print(self.GF)
 
             elif instruct.attrib['opcode'] == "SUB":
                 self.controlArgCount(instruct, 3)
@@ -364,6 +362,9 @@ class interpret(printErrors):
                 self.controlInt(instruct[1].attrib, "var", "int", instruct[1].text)
                 # <symb1> should be int or var
                 self.controlInt(instruct[2].attrib, "var", "int", instruct[2].text, "IDIV")
+
+                #self.printError("Division by zero", 57)
+
 
             elif instruct.attrib['opcode'] == "LT":
                 self.controlArgCount(instruct, 3)
