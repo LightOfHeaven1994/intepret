@@ -400,26 +400,97 @@ class interpret(printErrors):
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
 
-            elif instruct.attrib['opcode'] == "LT":
+            elif instruct.attrib['opcode'] == "LT" or instruct.attrib['opcode'] == "GT":
                 self.controlArgCount(instruct, 3)
                 # <var>
                 self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
-                # <symb1>
-                symb_1 = self.isSymbOk(1, instruct) #TODO NIL CAN NOT BE HERE
-                # <symb2>
-                symb_2 = self.isSymbOk(2, instruct)
-                #self.checkCompareInstruct(instruct)
+                instruction = instruct.attrib['opcode']
 
-            elif instruct.attrib['opcode'] == "GT":
-                self.controlArgCount(instruct, 3)
-                # <var>
-                self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
-                # <symb1>
-                symb_1 = self.isSymbOk(1, instruct) #TODO NIL CAN NOT BE HERE
-                # <symb2>
-                symb_2 = self.isSymbOk(2, instruct)
-                #print(symb_1, symb_2)
-                #self.checkCompareInstruct(instruct)
+                if instruct[1].attrib['type'] == "var":
+                    self.controlArg(instruct[1].attrib['type'], "var", instruct[0].text)
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if (elem.dataType != "bool" and elem.dataType != "int"
+                                and elem.dataType != "string"):
+                                    self.printError("Expected argument of type 'bool','int','string'", 53)
+                                self.controlArg(elem.dataType, elem.dataType, elem.value)
+                                op1 = elem.value
+                                op1_type = elem.dataType
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    if (instruct[1].attrib['type'] != "bool" and instruct[1].attrib['type'] != "int"
+                    and instruct[1].attrib['type'] != "string"):
+                        self.printError("Expected argument of type 'bool','int','string'", 53)
+                    self.controlArg(instruct[1].attrib['type'], instruct[1].attrib['type'], instruct[1].text)
+                    op1 = instruct[1].text
+                    op1_type = instruct[1].attrib['type']
+
+                if instruct[2].attrib['type'] == "var":
+                    self.controlArg(instruct[1].attrib['type'], "var", instruct[0].text)
+                    varFrameName = instruct[2].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if (elem.dataType != "bool" and elem.dataType != "int"
+                                and elem.dataType != "string"):
+                                    self.printError("Expected argument of type 'bool','int','string'", 53)
+                                self.controlArg(elem.dataType, elem.dataType, elem.value)
+                                op2 = elem.value
+                                op2_type = elem.dataType
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    if (instruct[2].attrib['type'] != "bool" and instruct[2].attrib['type'] != "int"
+                    and instruct[2].attrib['type'] != "string"):
+                        self.printError("Expected argument of type 'bool','int','string'", 53)
+                    self.controlArg(instruct[2].attrib['type'], instruct[2].attrib['type'], instruct[2].text)
+                    op2 = instruct[2].text
+                    op2_type = instruct[2].attrib['type']
+
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            if op1_type != op2_type:
+                                self.printError("Compare two different types.", 53) #TODO ERRCODE
+                            if instruction == "GT":
+                                comp = lambda op1,op2: "true" if op1 > op2 else "false"
+                                elem.value = comp(op1,op2)
+                            elif instruction == "LT":
+                                comp = lambda op1,op2: "true" if op1 < op2 else "false"
+                                elem.value = comp(op1,op2)
+                            findSuccess = True
+                elif varFrameName == "LF":
+                    pass # TODO:
+                elif varFrameName == "TF":
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
 
             elif instruct.attrib['opcode'] == "EQ":
                 self.controlArgCount(instruct, 3)
@@ -663,6 +734,8 @@ class interpret(printErrors):
                     findSuccess = False
                     if varFrameName[0] == "GF":
                         for elem in self.GlobFrame:
+                            if elem.value == None:
+                                self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
                             if elem.name[1] == varFrameName[1]:
                                 print(elem.value, end = '\n')
                                 findSuccess = True
@@ -765,7 +838,80 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 3)
                 # <var>
                 self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
-                #TODO
+
+                if instruct[1].attrib['type'] == "var":
+
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "string":
+                                    self.printError("Expected argument of type 'string'", 53)
+                                self.controlArg(elem.dataType, "string", elem.value)
+                                op1 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[1].attrib['type'], "string", instruct[1].text)
+                    op1 = instruct[1].text
+
+                if instruct[2].attrib['type'] == "var":
+                    self.controlArg(instruct[2].attrib['type'], "var", instruct[2].text)
+                    varFrameName = instruct[2].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Expected argument of type 'int'", 53)
+                                self.controlArg(elem.dataType, "int", elem.value, "GETCHAR")
+                                op2 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[2].attrib['type'], "int", instruct[2].text, "GETCHAR")
+                    op2 = instruct[2].text
+
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            try:
+                                elem.value = op1[int(op2)]
+                            except:
+                                self.printError("Index is out of range", 58)
+                            findSuccess = True
+                elif varFrameName[0] == "LF":
+                    self.isFrameExist("LF")
+                    pass # TODO:
+                elif varFrameName[0] == "TF":
+                    self.isFrameExist("TF")
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
+
+
             elif instruct.attrib['opcode'] == "SETCHAR":
                 self.controlArgCount(instruct, 3)
                 # <var>
@@ -867,6 +1013,7 @@ class interpret(printErrors):
             int2char = False
             str2int = False
             exitInstr = False
+            getcharInstr = False
 
             if actType == type:
                 try:
@@ -876,6 +1023,8 @@ class interpret(printErrors):
                         str2int = True
                     elif args[0] == "EXIT":
                         exitInstr = True
+                    elif args[0] == "GETCHAR":
+                        getcharInstr = True
                 except:
                     pass
                 try:
@@ -885,7 +1034,7 @@ class interpret(printErrors):
                 # control integer for INT2CHAR instruction
                 if exitInstr and (number > 49 or number < 0):
                     self.printError("Invalid exit code.", 57)
-                if (int2char == True or str2int == True) and number < 0:
+                if (int2char or str2int or getcharInstr) and number < 0: # error out of range
                     self.printError("Argument is not valid integer for " + args[0] + " instruction.", 58)
             else:
                 self.printError("Expects argument of type 'int' but argument is type of " + str(actType) + ".", 53)
