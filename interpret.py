@@ -139,6 +139,9 @@ class interpret(printErrors):
         self.LocFrame = None
         self.stack = []
 
+        self.sStackLocFrame = []
+        self.sStackTempFrame = []
+
         self.GF = {} # global frame exists all time
         self.TF = None
         self.LF = []
@@ -181,7 +184,7 @@ class interpret(printErrors):
 
                 elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
-                    for elem in self.LocFrame:
+                    for elem in self.sStackLocFrame[-1]:
                         if varFrameName[1] == elem.name[1]: # if we find defined variable fill it by type and value
                             writeSuccess = True
                             if instruct[1].attrib['type'] == "var":
@@ -193,16 +196,19 @@ class interpret(printErrors):
                                             elem.dataType = element.dataType
                                             elem.value = element.value
                                             writeSuccess_1 = True
-                                    if not writeSuccess_1:
-                                        self.printError(varFrameName_1[1] + " is undefined", 54)
+                                            print("HERE")
                                 elif varFrameName_1[0] == "LF":
                                     for element in self.LocFrame:
                                         if varFrameName_1[1] == element.name[1]:
                                             elem.dataType = element.dataType
                                             elem.value = element.value
                                             writeSuccess_1 = True
-                                    if not writeSuccess_1:
-                                        self.printError(varFrameName_1[1] + " is undefined", 54)
+                                elif varFrameName_1[0] == "TF":
+                                    pass
+                                if not writeSuccess_1:
+                                    self.printError(varFrameName_1[1] + " is undefined", 54)
+
+
                             else:
                                 elem.dataType = instruct[1].attrib['type']
                                 elem.value = instruct[1].text
@@ -211,7 +217,7 @@ class interpret(printErrors):
 
                 elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
-                    for elem in self.TempFrame:
+                    for elem in self.sStackTempFrame[-1]:
                         if varFrameName[1] == elem.name[1]: # if we find defined variable fill it by type and value
                             writeSuccess = True
                             if instruct[1].attrib['type'] == "var":
@@ -220,7 +226,7 @@ class interpret(printErrors):
                                 if varFrameName_1[0] == "LF":
                                     pass # TODO:
                                 elif varFrameName_1[0] == "TF":
-                                    for element in self.TempFrame:
+                                    for element in self.sStackTempFrame[-1]:
                                         if varFrameName_1[1] == element.name[1]:
                                             elem.dataType = element.dataType
                                             elem.value = element.value
@@ -236,27 +242,35 @@ class interpret(printErrors):
             elif instruct.attrib['opcode'] == "CREATEFRAME":
                 self.controlArgCount(instruct, 0)
                 self.TempFrame = []
+                self.sStackTempFrame.append(self.TempFrame)
+                #print(self.sStackTempFrame)
 
             elif instruct.attrib['opcode'] == "PUSHFRAME":
                 self.controlArgCount(instruct, 0)
-                self.isFrameExist("TF")
+                self.isFrameExist("TF") #TODO
 
                 #fill Local frame
                 self.LocFrame = []
-                for elem in self.TempFrame:
+                for elem in self.sStackTempFrame[-1]:
                     elem.name[0] = "LF"
                     self.LocFrame.append(elem)
+                tmp = self.sStackTempFrame.pop(-1)
 
-                #fill LF
+                self.sStackLocFrame.append(self.LocFrame)
+
                 self.TempFrame = None
 
             elif instruct.attrib['opcode'] == "POPFRAME":
                 self.controlArgCount(instruct, 0)
                 self.isFrameExist("LF")
 
-                #move lf do tf
-                #lf = []
                 self.TempFrame = []
+                for elem in self.sStackLocFrame[-1]:
+                    elem.name[0] = "TF"
+                    self.TempFrame.append(elem)
+                tmp = self.sStackLocFrame.pop(-1)
+
+                self.sStackTempFrame.append(self.TempFrame)
 
             elif instruct.attrib['opcode'] == "DEFVAR":
                 self.controlArgCount(instruct, 1)
@@ -279,10 +293,11 @@ class interpret(printErrors):
 
                 elif var.name[0] == "TF":  #TODO check if its possible
                     self.isFrameExist("TF")
-                    for elem in self.TempFrame: # control if variable is already exist
+                    for elem in self.sStackTempFrame[-1]: # control if variable is already exist
                         if var.name[1] == elem.name[1]:
                             self.printError("Redefenition of variable", 52) # TODO Check ret code
-                    self.TempFrame.append(var)
+                    self.sStackTempFrame[-1].append(var)
+                    #print(self.sStackTempFrame[-1][0].name[1])
 
             elif instruct.attrib['opcode'] == "CALL":
                 self.controlArgCount(instruct, 1)
@@ -1165,10 +1180,10 @@ class interpret(printErrors):
 
     def isFrameExist(self, frame):
         if frame == "LF":
-            if self.LocFrame == None:
+            if not self.sStackLocFrame:
                 self.printError("Undefined frame (Local frame)",55)
         elif frame == "TF":
-            if self.TempFrame == None:
+            if not self.sStackTempFrame:
                 self.printError("Undefined frame (Temporary frame)",55)
 
 def main():
