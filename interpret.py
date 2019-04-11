@@ -12,12 +12,8 @@ from operator import attrgetter
 import numpy as np
 import re
 
-#LIST TODO
-# 1) all variables are defined by instr DEFVAR
-# 2) Do we need to check if exists TF or LF before work with every instructions
-# 3) test_move_into_undefined_var_in_lf.src
-
 class printErrors:
+    """ Class printing errors to stderr """
     def printError(self, errorMessage, errorCode):
         sys.stderr.write('{} Error code is {} \n'.format(errorMessage, errorCode))
         sys.exit(errorCode)
@@ -38,7 +34,7 @@ class sStack:
 
 #class for control arguments
 class arguments(printErrors):
-
+    """ Class controling program arguments """
     def checkArguments(self):
         try:
             opts, args = getopt.getopt(sys.argv[1:], "", ['help', 'source=', 'input='])
@@ -79,11 +75,17 @@ class arguments(printErrors):
         return source, input
 
     def printHelp(self):
-        print("NAPOVEDA") #TODO
+        print("\n\t\t\t******** HELP *********")
+        print("\n   This script read input source XML, do lexical and syntax analysis, parse XML and print output")
+        print(" Possible arguments:")
+        print("	--source= <name of file> get xml to parse")
+        print("	--input= <name of file> for reading input arguments")
+        print(" One of this argument can be read from stdin")
+        print(" \n\t\t\t***********************")
         exit(0)
 
 class treeXML(printErrors):
-
+    """ Class controling XML file """
     def __init__(self):
         pass
 
@@ -99,7 +101,7 @@ class treeXML(printErrors):
 
     def formatControl(self, tree):
         if tree.tag != "program" or "language" not in tree.attrib or tree.attrib['language'] != "IPPcode19" or len(tree.attrib) != 1:
-            self.printError("Bad XML header.", 31)
+            self.printError("Bad XML header.", 32)
         orderCounter = 1
         for instruct in tree:
             if (instruct.tag != "instruction" or "order" not in instruct.attrib or len(instruct.attrib) != 2
@@ -121,6 +123,7 @@ class treeXML(printErrors):
         return tree
 
 def controlLabels(tree):
+    """ Function controling label redefinition """
     # list of labels to control
     labels = []
     for instruct in tree:
@@ -131,7 +134,7 @@ def controlLabels(tree):
         printErrors().printError("Label redefinition.", 52)
 
 class interpret(printErrors):
-
+    """ Class parsing XML, analysing syntax and semantics """
     def __init__(self):
         # frames
         self.GlobFrame = []
@@ -389,12 +392,11 @@ class interpret(printErrors):
                         pass # TODO:
                     elif varFrameName[0] == "TF":
                         pass # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
                 else:
                     self.controlArg(instruct[1].attrib['type'], "int", instruct[0].text)
                     op1 = int(instruct[1].text)
-
-                if not findSuccess:
-                    self.printError(varFrameName[1] + " is undefined", 54)
 
                 if instruct[2].attrib['type'] == "var":
                     self.controlArg(instruct[2].attrib['type'], "var", instruct[2].text)
@@ -413,12 +415,13 @@ class interpret(printErrors):
                         pass # TODO:
                     elif varFrameName[0] == "TF":
                         pass # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
                 else:
                     self.controlArg(instruct[2].attrib['type'], "int", instruct[2].text)
                     op2 = int(instruct[2].text)
 
-                if not findSuccess:
-                    self.printError(varFrameName[1] + " is undefined", 54)
+
 
                 varFrameName = instruct[0].text.split('@', 1)
                 findSuccess = False
@@ -689,9 +692,9 @@ class interpret(printErrors):
                         if elem.name[1] == varFrameName[1]:
                             convertToBool = lambda x: True if x == "true" else False
                             if instruction == "AND":
-                                elem.value = convertToBool(op1) and convertToBool(op2)
+                                elem.value = str((convertToBool(op1) and convertToBool(op2))).lower()
                             elif instruction == "OR":
-                                elem.value = convertToBool(op1) or convertToBool(op2)
+                                elem.value = str((convertToBool(op1) or convertToBool(op2))).lower()
                             findSuccess = True
                 elif varFrameName == "LF":
                     pass # TODO:
@@ -738,7 +741,7 @@ class interpret(printErrors):
                     for elem in self.GlobFrame:
                         if elem.name[1] == varFrameName[1]:
                             convertToBool = lambda x: True if x == "true" else False
-                            elem.value = not convertToBool(op1)
+                            elem.value = str((not convertToBool(op1))).lower()
                             elem.dataType = "bool"
                             findSuccess = True
                 elif varFrameName == "LF":
@@ -921,7 +924,6 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 1)
                 # <symb1>
                 self.isSymbOk(0, instruct)
-
                 if instruct[0].attrib['type'] == "var":
                     varFrameName = instruct[0].text.split('@', 1)
                     findSuccess = False
@@ -930,7 +932,13 @@ class interpret(printErrors):
                             if elem.name[1] == varFrameName[1]:
                                 if elem.value == None and elem.dataType == None:
                                     self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
-                                print(elem.value, end = '')
+
+                                if isinstance(elem.value, str) and elem.dataType != "nil" and elem.value:
+                                    print(self.convertString(elem.value), end = '')
+                                elif elem.dataType == "nil":
+                                    print("", end = '')
+                                else:
+                                    print(elem.value, end = '')
                                 findSuccess = True
                     elif varFrameName[0] == "LF":
                         self.isFrameExist("LF")
@@ -938,7 +946,12 @@ class interpret(printErrors):
                             if elem.name[1] == varFrameName[1]:
                                 if elem.value == None and elem.dataType == None:
                                     self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
-                                print(elem.value, end = '')
+                                if isinstance(elem.value, str) and elem.dataType != "nil":
+                                    print(self.convertString(elem.value), end = '')
+                                elif elem.dataType == "nil":
+                                    print("", end = '')
+                                else:
+                                    print(elem.value, end = '')
                                 findSuccess = True
 
                     elif varFrameName[0] == "TF":
@@ -947,13 +960,22 @@ class interpret(printErrors):
                             if elem.name[1] == varFrameName[1]:
                                 if elem.value == None and elem.dataType == None:
                                     self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
-                                print(elem.value, end = '')
+                                if isinstance(elem.value, str) and elem.dataType != "nil":
+                                    print(self.convertString(elem.value), end = '')
+                                elif elem.dataType == "nil":
+                                    print("", end = '')
+                                else:
+                                    print(elem.value, end = '')
                                 findSuccess = True
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
                 else:
-                    print(instruct[0].text, end = '')
+                    if instruct[0].attrib['type'] == "nil":
+                        print("", end = '')
+                    else:
+                        print(instruct[0].text, end = '')
 
-                if not findSuccess:
-                    self.printError(varFrameName[1] + " is undefined", 54)
+
 
             elif instruct.attrib['opcode'] == "CONCAT":
                 self.controlArgCount(instruct, 3)
@@ -1058,7 +1080,10 @@ class interpret(printErrors):
                         self.printError(varFrameName[1] + " is undefined", 54)
                 else:
                     self.controlArg(instruct[1].attrib['type'], "string", instruct[1].text)
-                    op1 = re.sub("\d\d\d", '', instruct[1].text)
+                    if instruct[1].text:
+                        op1 = re.sub("\d\d\d", '', instruct[1].text)
+                    else:
+                        op1 = ""
 
                 if op1 == None: # prevent None error
                     op1 = ""
@@ -1250,6 +1275,49 @@ class interpret(printErrors):
                 # <symb1>
                 self.isSymbOk(1, instruct)
 
+                if instruct[1].attrib['type'] == "var":
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if (elem.dataType != "int" and elem.dataType != "string"
+                                and elem.dataType != "bool" and elem.dataType != "nil"):
+                                    typeSymb = ""
+                                if elem.dataType == None and elem.value == None:
+                                    typeSymb = ""
+                                else:
+                                    typeSymb = elem.dataType
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    typeSymb = instruct[1].attrib['type']
+
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            elem.value = typeSymb
+                            elem.dataType = "string"
+                            findSuccess = True
+                elif varFrameName[0] == "LF":
+                    self.isFrameExist("LF")
+                    pass # TODO:
+                elif varFrameName[0] == "TF":
+                    self.isFrameExist("TF")
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
+
             elif instruct.attrib['opcode'] == "LABEL":
                 self.controlArgCount(instruct, 1)
                 # <label>
@@ -1399,7 +1467,6 @@ class interpret(printErrors):
                 self.printError("Expects argument of type 'nil' but argument is type of " + str(actType) + ".", 53)
 
     def controlRead(self, inputText, type):
-        #print(inputText, type)
         if type == "bool":
             return self.controlArg(type, type, inputText.lower(), "READ")
         elif type == "int":
@@ -1412,12 +1479,6 @@ class interpret(printErrors):
     def isSymbOk(self, x, instruct):
         typeSymb = instruct[x].attrib['type']
         instructName = instruct.attrib['opcode']
-
-        if instructName == "STRI2INT": #TODO CHECK
-            if typeSymb == "var" or (typeSymb == "string" and x == 1) or (typeSymb == "int" and x == 2):
-                self.controlArg(instruct[x].attrib['type'], typeSymb, instruct[x].text, "STRI2INT")
-            else:
-                self.printError("Expects argument of type 'symb' (string) but argument is type of " + str(instruct[x].attrib['type']) + ".", 53)
 
         if (typeSymb == "var" or typeSymb == "string"
         or typeSymb == "int" or typeSymb == "bool" or typeSymb == "nil"):
@@ -1436,6 +1497,12 @@ class interpret(printErrors):
         elif frame == "TF":
             if not self.sStackTempFrame:
                 self.printError("Undefined frame (Temporary frame)",55)
+
+    def convertString(self, string):
+        esc = re.findall("\\\\\d\d\d", string)
+        for escape_seq in esc:
+            string = string.replace(escape_seq, chr(int(escape_seq.lstrip('\\'))))
+        return string
 
 def main():
     # control arguments
