@@ -14,12 +14,14 @@ import re
 
 class printErrors:
     """ Class printing errors to stderr """
+
     def printError(self, errorMessage, errorCode):
         sys.stderr.write('{} Error code is {} \n'.format(errorMessage, errorCode))
         sys.exit(errorCode)
 
 class Variable:
     """ Class representing variable """
+
     def __init__(self, var):
         self.name = var.split("@", 1)
         self.dataType = None
@@ -27,6 +29,7 @@ class Variable:
 
 class sStack:
     """ Class representing stack """
+
     def __init__(self, dataType, value):
         self.dataType = dataType
         self.value = value
@@ -35,6 +38,7 @@ class sStack:
 #class for control arguments
 class arguments(printErrors):
     """ Class controling program arguments """
+
     def checkArguments(self):
         try:
             opts, args = getopt.getopt(sys.argv[1:], "", ['help', 'source=', 'input='])
@@ -75,6 +79,8 @@ class arguments(printErrors):
         return source, input
 
     def printHelp(self):
+        """ Function printing help message """
+
         print("\n\t\t\t******** HELP *********")
         print("\n   This script read input source XML, do lexical and syntax analysis, parse XML and print output")
         print(" Possible arguments:")
@@ -86,6 +92,7 @@ class arguments(printErrors):
 
 class treeXML(printErrors):
     """ Class controling XML file """
+
     def __init__(self):
         pass
 
@@ -100,6 +107,8 @@ class treeXML(printErrors):
         return tree
 
     def formatControl(self, tree):
+        """ Function controling XML format """
+
         if tree.tag != "program" or "language" not in tree.attrib or tree.attrib['language'] != "IPPcode19" or len(tree.attrib) != 1:
             self.printError("Bad XML header.", 32)
         orderCounter = 1
@@ -114,6 +123,7 @@ class treeXML(printErrors):
             orderCounter = orderCounter + 1
 
     def putElementsInOrder(self, tree):
+        """ Function for put every element in order """
         # sorting instruction number
         tree[:] = sorted(tree, key=lambda child: int(child.get("order")))
         # sorting arg by tag attribute
@@ -124,6 +134,7 @@ class treeXML(printErrors):
 
 def controlLabels(tree):
     """ Function controling label redefinition """
+
     # list of labels to control
     labels = []
     for instruct in tree:
@@ -135,6 +146,7 @@ def controlLabels(tree):
 
 class interpret(printErrors):
     """ Class parsing XML, analysing syntax and semantics """
+
     def __init__(self):
         # frames
         self.GlobFrame = []
@@ -151,6 +163,8 @@ class interpret(printErrors):
 
 
     def checkInstruct(self, tree, inputFile):
+        """ Main function to parse XML """
+
         for instruct in tree:
             if instruct.attrib['opcode'] == "MOVE":
                 self.controlArgCount(instruct, 2)
@@ -175,10 +189,6 @@ class interpret(printErrors):
                                             writeSuccess_1 = True
                                     if not writeSuccess_1:
                                         self.printError(varFrameName_1[1] + " is undefined", 54)
-                                elif varFrameName_1[0] == "LF":
-                                    pass # TODO:
-                                elif varFrameName_1[0] == "TF":
-                                    pass # TODO:
                             else:
                                 elem.dataType = instruct[1].attrib['type']
                                 elem.value = instruct[1].text
@@ -225,9 +235,7 @@ class interpret(printErrors):
                             if instruct[1].attrib['type'] == "var":
                                 writeSuccess_1 = False
                                 varFrameName_1 = instruct[1].text.split('@', 1)
-                                if varFrameName_1[0] == "LF":
-                                    pass # TODO:
-                                elif varFrameName_1[0] == "TF":
+                                if varFrameName_1[0] == "TF":
                                     for element in self.sStackTempFrame[-1]:
                                         if varFrameName_1[1] == element.name[1]:
                                             elem.dataType = element.dataType
@@ -245,11 +253,10 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 0)
                 self.TempFrame = []
                 self.sStackTempFrame.append(self.TempFrame)
-                #print(self.sStackTempFrame)
 
             elif instruct.attrib['opcode'] == "PUSHFRAME":
                 self.controlArgCount(instruct, 0)
-                self.isFrameExist("TF") #TODO
+                self.isFrameExist("TF")
 
                 #fill Local frame
                 self.LocFrame = []
@@ -283,23 +290,22 @@ class interpret(printErrors):
                 if var.name[0] == "GF":
                     for elem in self.GlobFrame: # control if variable is already exist
                         if var.name[1] == elem.name[1]:
-                            self.printError("Redefenition of variable", 52) # TODO Check ret code
+                            self.printError("Redefenition of variable", 52)
                     self.GlobFrame.append(var)
 
                 elif var.name[0] == "LF":
                     self.isFrameExist("LF")
                     for elem in self.sStackLocFrame[-1]: # control if variable is already exist
                         if var.name[1] == elem.name[1]:
-                            self.printError("Redefenition of variable", 52) # TODO Check ret code
+                            self.printError("Redefenition of variable", 52)
                     self.sStackLocFrame[-1].append(var)
 
-                elif var.name[0] == "TF":  #TODO check if its possible
+                elif var.name[0] == "TF":
                     self.isFrameExist("TF")
                     for elem in self.sStackTempFrame[-1]: # control if variable is already exist
                         if var.name[1] == elem.name[1]:
-                            self.printError("Redefenition of variable", 52) # TODO Check ret code
+                            self.printError("Redefenition of variable", 52)
                     self.sStackTempFrame[-1].append(var)
-                    #print(self.sStackTempFrame[-1][0].name[1])
 
             elif instruct.attrib['opcode'] == "CALL":
                 self.controlArgCount(instruct, 1)
@@ -308,7 +314,6 @@ class interpret(printErrors):
 
             elif instruct.attrib['opcode'] == "RETURN":
                 self.controlArgCount(instruct, 0)
-
 
             elif instruct.attrib['opcode'] == "PUSHS":
                 self.controlArgCount(instruct, 1)
@@ -325,21 +330,11 @@ class interpret(printErrors):
                                 var = sStack(elem.dataType, elem.value)
                                 self.stack.append(var)
                                 findSuccess = True
-
-                    elif varFrameName[0] == "LF":
-                        isFrameExist("LF")
-                        #TODO if carName is empty
-
-                    elif varFrameName[0] == "TF":
-                        self.isFrameExist("TF")
-                        #TODO if carName is empty
-
                     if not findSuccess:
                         self.printError(varFrameName[1] + " is undefined", 54)
                 else:
                     var = sStack(instruct[0].attrib['type'], instruct[0].text)
                     self.stack.append(var)
-
 
             elif instruct.attrib['opcode'] == "POPS":
                 self.controlArgCount(instruct, 1)
@@ -358,13 +353,6 @@ class interpret(printErrors):
                             elem.dataType = stackTop.dataType
                             elem.value = stackTop.value
                             findSuccess = True
-
-                elif varFrameName[0] == "LF":
-                    self.isFrameExist("LF")
-                    # TODO:
-                elif varFrameName[0] == "TF":
-                    self.isFrameExist("TF")
-                    # TODO:
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
 
@@ -389,9 +377,23 @@ class interpret(printErrors):
                                 op1 = int(elem.value)
                                 findSuccess = True
                     elif varFrameName[0] == "LF":
-                        pass # TODO:
+                        for elem in self.sStackLocFrame[-1]:
+                            if elem.name[1] == varFrameName[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Argument is not integer.", 53)
+                                op1 = int(elem.value)
+                                findSuccess = True
                     elif varFrameName[0] == "TF":
-                        pass # TODO:
+                        for elem in self.sStackTempFrame[-1]:
+                            if elem.name[1] == varFrameName[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Argument is not integer.", 53)
+                                op1 = int(elem.value)
+                                findSuccess = True
                     if not findSuccess:
                         self.printError(varFrameName[1] + " is undefined", 54)
                 else:
@@ -412,16 +414,28 @@ class interpret(printErrors):
                                 op2 = int(elem.value)
                                 findSuccess = True
                     elif varFrameName[0] == "LF":
-                        pass # TODO:
+                        for elem in self.sStackLocFrame[-1]:
+                            if elem.name[1] == varFrameName[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Argument is not integer.", 53)
+                                op1 = int(elem.value)
+                                findSuccess = True
                     elif varFrameName[0] == "TF":
-                        pass # TODO:
+                        for elem in self.sStackTempFrame[-1]:
+                            if elem.name[1] == varFrameName[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Argument is not integer.", 53)
+                                op1 = int(elem.value)
+                                findSuccess = True
                     if not findSuccess:
                         self.printError(varFrameName[1] + " is undefined", 54)
                 else:
                     self.controlArg(instruct[2].attrib['type'], "int", instruct[2].text)
                     op2 = int(instruct[2].text)
-
-
 
                 varFrameName = instruct[0].text.split('@', 1)
                 findSuccess = False
@@ -440,10 +454,36 @@ class interpret(printErrors):
                                     self.printError("Division by zero", 57)
                                 elem.value = op1 // op2
                             findSuccess = True
-                elif varFrameName == "LF":
-                    pass # TODO:
-                elif varFrameName == "TF":
-                    pass # TODO:
+                elif varFrameName[0] == "LF":
+                    for elem in self.sStackLocFrame[-1]:
+                        if elem.name[1] == varFrameName[1]:
+                            elem.dataType = "int"
+                            if instruction == "ADD":
+                                elem.value = op1 + op2
+                            elif instruction == "SUB":
+                                elem.value = op1 - op2
+                            elif instruction == "MUL":
+                                elem.value = op1 * op2
+                            elif instruction == "IDIV":
+                                if op2 == 0:
+                                    self.printError("Division by zero", 57)
+                                elem.value = op1 // op2
+                            findSuccess = True
+                elif varFrameName[0] == "TF":
+                    for elem in self.sStackTempFrame[-1]:
+                        if elem.name[1] == varFrameName[1]:
+                            elem.dataType = "int"
+                            if instruction == "ADD":
+                                elem.value = op1 + op2
+                            elif instruction == "SUB":
+                                elem.value = op1 - op2
+                            elif instruction == "MUL":
+                                elem.value = op1 * op2
+                            elif instruction == "IDIV":
+                                if op2 == 0:
+                                    self.printError("Division by zero", 57)
+                                elem.value = op1 // op2
+                            findSuccess = True
 
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
@@ -524,7 +564,7 @@ class interpret(printErrors):
                     for elem in self.GlobFrame:
                         if elem.name[1] == varFrameName[1]:
                             if op1_type != op2_type:
-                                self.printError("Compare two different types.", 53) #TODO ERRCODE
+                                self.printError("Compare two different types.", 53)
                             if instruction == "GT":
                                 comp = lambda op1,op2: "true" if op1 > op2 else "false"
                                 elem.value = comp(op1,op2)
@@ -533,9 +573,11 @@ class interpret(printErrors):
                                 elem.value = comp(op1,op2)
                             findSuccess = True
                 elif varFrameName == "LF":
-                    pass # TODO:
+                    self.isFrameExist("LF")
+                    # TODO:
                 elif varFrameName == "TF":
-                    pass # TODO:
+                    self.isFrameExist("TF")
+                    # TODO:
 
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
@@ -615,16 +657,18 @@ class interpret(printErrors):
                     for elem in self.GlobFrame:
                         if elem.name[1] == varFrameName[1]:
                             if op1_type != op2_type and op1_type != "nil" and op2_type != "nil":
-                                self.printError("Compare two different types.", 53) #TODO ERRCODE
+                                self.printError("Compare two different types.", 53)
                             if op1 == op2:
                                 elem.value = "true"
                             else:
                                 elem.value = "false"
                             findSuccess = True
                 elif varFrameName == "LF":
-                    pass # TODO:
+                    self.isFrameExist("LF")
+                    # TODO:
                 elif varFrameName == "TF":
-                    pass # TODO:
+                    self.isFrameExist("TF")
+                    # TODO:
 
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
@@ -697,9 +741,9 @@ class interpret(printErrors):
                                 elem.value = str((convertToBool(op1) or convertToBool(op2))).lower()
                             findSuccess = True
                 elif varFrameName == "LF":
-                    pass # TODO:
+                    self.isFrameExist("LF") # TODO:
                 elif varFrameName == "TF":
-                    pass # TODO:
+                    self.isFrameExist("TF") # TODO:
 
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
@@ -709,7 +753,6 @@ class interpret(printErrors):
                 # <var>
                 self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
 
-                # <symb1>
                 if instruct[1].attrib['type'] == "var":
                     self.controlArg(instruct[1].attrib['type'], "var", instruct[0].text)
                     varFrameName = instruct[1].text.split('@', 1)
@@ -745,10 +788,9 @@ class interpret(printErrors):
                             elem.dataType = "bool"
                             findSuccess = True
                 elif varFrameName == "LF":
-                    pass # TODO:
+                    self.isFrameExist("LF") # TODO:
                 elif varFrameName == "TF":
-                    pass # TODO:
-
+                    self.isFrameExist("TF") # TODO:
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
 
@@ -793,10 +835,9 @@ class interpret(printErrors):
                             elem.value = chr(int(op1))
                             findSuccess = True
                 elif varFrameName == "LF":
-                    pass # TODO:
+                    self.isFrameExist("LF") # TODO:
                 elif varFrameName == "TF":
-                    pass # TODO:
-
+                    self.isFrameExist("TF") # TODO:
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
 
@@ -868,10 +909,9 @@ class interpret(printErrors):
                                 self.printError("Index is out of range", 58)
                             findSuccess = True
                 elif varFrameName == "LF":
-                    pass # TODO:
+                    self.isFrameExist("LF") # TODO:
                 elif varFrameName == "TF":
-                    pass # TODO:
-
+                    self.isFrameExist("TF") # TODO:
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
 
@@ -889,7 +929,6 @@ class interpret(printErrors):
                 if instruct[1].attrib['type'] != "type":
                     printError("Bad type. Must be 'type'", 53)
                 newText = self.controlRead(inputText, instruct[1].text)
-
                 if newText == None:
                     newText = inputText
 
@@ -918,7 +957,6 @@ class interpret(printErrors):
                             findSuccess = True
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
-
 
             elif instruct.attrib['opcode'] == "WRITE":
                 self.controlArgCount(instruct, 1)
@@ -974,8 +1012,6 @@ class interpret(printErrors):
                         print("", end = '')
                     else:
                         print(instruct[0].text, end = '')
-
-
 
             elif instruct.attrib['opcode'] == "CONCAT":
                 self.controlArgCount(instruct, 3)
@@ -1043,14 +1079,13 @@ class interpret(printErrors):
                             findSuccess = True
                 elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
-                    pass # TODO:
+                    # TODO:
                 elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
-                    pass # TODO:
+                    # TODO:
 
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
-
 
             elif instruct.attrib['opcode'] == "STRLEN":
                 self.controlArgCount(instruct, 2)
@@ -1084,7 +1119,6 @@ class interpret(printErrors):
                         op1 = re.sub("\d\d\d", '', instruct[1].text)
                     else:
                         op1 = ""
-
                 if op1 == None: # prevent None error
                     op1 = ""
 
@@ -1097,14 +1131,12 @@ class interpret(printErrors):
                             findSuccess = True
                 elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
-                    pass # TODO:
+                    # TODO:
                 elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
-                    pass # TODO:
-
+                    # TODO:
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
-
 
             elif instruct.attrib['opcode'] == "GETCHAR":
                 self.controlArgCount(instruct, 3)
@@ -1112,7 +1144,6 @@ class interpret(printErrors):
                 self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
 
                 if instruct[1].attrib['type'] == "var":
-
                     varFrameName = instruct[1].text.split('@', 1)
                     findSuccess = False
                     if varFrameName[0] == "GF":
@@ -1175,14 +1206,13 @@ class interpret(printErrors):
                             findSuccess = True
                 elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
-                    pass # TODO:
+                    # TODO:
                 elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
-                    pass # TODO:
+                    # TODO:
 
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
-
 
             elif instruct.attrib['opcode'] == "SETCHAR":
                 self.controlArgCount(instruct, 3)
@@ -1258,15 +1288,13 @@ class interpret(printErrors):
                             findSuccess = True
                 elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
-                    pass # TODO:
+                    # TODO:
                 elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
-                    pass # TODO:
+                    # TODO:
 
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
-
-
 
             elif instruct.attrib['opcode'] == "TYPE":
                 self.controlArgCount(instruct, 2)
@@ -1310,10 +1338,10 @@ class interpret(printErrors):
                             findSuccess = True
                 elif varFrameName[0] == "LF":
                     self.isFrameExist("LF")
-                    pass # TODO:
+                    # TODO:
                 elif varFrameName[0] == "TF":
                     self.isFrameExist("TF")
-                    pass # TODO:
+                    # TODO:
 
                 if not findSuccess:
                     self.printError(varFrameName[1] + " is undefined", 54)
@@ -1332,12 +1360,12 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 3)
                 # <label>
                 self.controlArg(instruct[0].attrib['type'], "label", instruct[0].text)
-                #TODO
+
             elif instruct.attrib['opcode'] == "JUMPIFNEQ":
                 self.controlArgCount(instruct, 3)
                 # <label>
                 self.controlArg(instruct[0].attrib['type'], "label", instruct[0].text)
-                #TODO
+
             elif instruct.attrib['opcode'] == "EXIT":
                 self.controlArgCount(instruct, 1)
 
@@ -1357,7 +1385,15 @@ class interpret(printErrors):
                                 findSuccess = True
                     elif varFrameName[0] == "LF":
                         self.isFrameExist("LF")
-                        # TODO:
+                        for elem in self.sStackLocFrame[-1]:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Expected argument of type 'int'", 53)
+                                self.controlArg(elem.dataType, "int", elem.value, "EXIT")
+                                exit(int(elem.value))
+                                findSuccess = True
                     elif varFrameName[0] == "TF":
                         self.isFrameExist("TF")
                         for elem in self.sStackTempFrame[-1]:
@@ -1383,10 +1419,14 @@ class interpret(printErrors):
                 self.printError("Unknown instruction", 32)
 
     def controlArgCount(self, instruct, count):
+        """Function controling arguments count """
+
         if len(instruct) != count:
             self.printError("Bad argument count for instruction", 31)
 
     def controlArg(self, actType, type, text, *args):
+        """ Function controling arguments type, content and other specific things for some instructions """
+
         int2char = False
         str2int = False
         exitInstr = False
@@ -1414,7 +1454,6 @@ class interpret(printErrors):
                     self.printError("Bad name of variable", 53)
             else:
                 self.printError("Expects argument of type 'var' but argument is type of " + str(actType) + ".", 53)
-
         elif type is "label":
             if actType == type:
                 if not re.match("^((_|-|\$|&|%|\*|!|\?)|[A-z])([A-z0-9]|_|\-|\$|&|%|\*|!|\?)*", text):
@@ -1436,7 +1475,6 @@ class interpret(printErrors):
                     self.printError("Argument is not valid integer for " + args[0] + " instruction.", 58)
             else:
                 self.printError("Expects argument of type 'int' but argument is type of " + str(actType) + ".", 53)
-
         elif type == "string":
             if actType == type:
                 if text == None: # prevent empty string == None error
@@ -1454,11 +1492,6 @@ class interpret(printErrors):
                         return "false"
             else:
                 self.printError("Expects argument of type 'bool' but argument is type of " + str(actType) + ".", 53)
-
-        elif type == "type":
-            pass
-            #TODO
-
         elif type == "nil":
             if actType == type:
                 if not text == "nil":
@@ -1467,6 +1500,8 @@ class interpret(printErrors):
                 self.printError("Expects argument of type 'nil' but argument is type of " + str(actType) + ".", 53)
 
     def controlRead(self, inputText, type):
+        """ Function controling arguments for READ instruction """
+
         if type == "bool":
             return self.controlArg(type, type, inputText.lower(), "READ")
         elif type == "int":
@@ -1474,9 +1509,11 @@ class interpret(printErrors):
         elif type == "string":
             return self.controlArg(type, type, inputText, "READ")
         else:
-            self.printError("Bad type for instruction 'READ'",32) #TODO check error code
+            self.printError("Bad type for instruction 'READ'", 32)
 
     def isSymbOk(self, x, instruct):
+        """ Function controling <symb> format """
+
         typeSymb = instruct[x].attrib['type']
         instructName = instruct.attrib['opcode']
 
@@ -1487,10 +1524,10 @@ class interpret(printErrors):
             self.controlArg(instruct[x].attrib['type'], typeSymb, instruct[x].text)
         else:
             self.printError("Expects argument of type 'symb' but argument is type of " + str(instruct[x].attrib['type']) + ".", 53)
-        if instructName == "EQ":
-            return instruct[x].text
 
     def isFrameExist(self, frame):
+        """ Function controling frames """
+
         if frame == "LF":
             if not self.sStackLocFrame:
                 self.printError("Undefined frame (Local frame)",55)
@@ -1499,6 +1536,8 @@ class interpret(printErrors):
                 self.printError("Undefined frame (Temporary frame)",55)
 
     def convertString(self, string):
+        """ Function converting escape sequence to string"""
+
         esc = re.findall("\\\\\d\d\d", string)
         for escape_seq in esc:
             string = string.replace(escape_seq, chr(int(escape_seq.lstrip('\\'))))
@@ -1509,7 +1548,6 @@ def main():
     files = arguments().checkArguments()
     # take source files from tuple
     source =''.join(files[0])
-    #print(source)
     # parseXML
     tree = treeXML().parseXML(source)
     # control labels
