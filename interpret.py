@@ -1034,7 +1034,53 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 2)
                 # <var>
                 self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
-                #TODO
+
+                if instruct[1].attrib['type'] == "var":
+                    self.controlArg(instruct[1].attrib['type'], "var", instruct[1].text)
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "string":
+                                    self.printError("Expected argument of type 'string'", 53)
+                                op1 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[1].attrib['type'], "string", instruct[1].text)
+                    op1 = re.sub("\d\d\d", '', instruct[1].text)
+
+                if op1 == None: # prevent None error
+                    op1 = ""
+
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            elem.value = len(op1)
+                            findSuccess = True
+                elif varFrameName[0] == "LF":
+                    self.isFrameExist("LF")
+                    pass # TODO:
+                elif varFrameName[0] == "TF":
+                    self.isFrameExist("TF")
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
+
+
             elif instruct.attrib['opcode'] == "GETCHAR":
                 self.controlArgCount(instruct, 3)
                 # <var>
