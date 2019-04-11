@@ -801,10 +801,76 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 3)
                 # <var>
                 self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
-                # <symb1> is string
-                self.isSymbOk(1, instruct)
-                # <symb2> is int >= 0
-                self.isSymbOk(2, instruct)
+
+                if instruct[1].attrib['type'] == "var":
+                    self.controlArg(instruct[1].attrib['type'], "var", instruct[0].text)
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None and elem.value == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "string":
+                                    self.printError("Expected argument of type 'string'", 53)
+                                self.controlArg(elem.dataType, "string", elem.value)
+                                op1 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[1].attrib['type'], "string", instruct[1].text)
+                    op1 = instruct[1].text
+
+                if instruct[2].attrib['type'] == "var":
+                    self.controlArg(instruct[1].attrib['type'], "var", instruct[0].text, "INT2CHAR")
+                    varFrameName = instruct[2].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None and elem.value == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Expected argument of type 'int'", 53)
+                                op2 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[2].attrib['type'], "int", instruct[2].text, "INT2CHAR")
+                    op2 = instruct[2].text
+
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            op1 = list(op1)
+                            try:
+                                elem.value = ord(op1[int(op2)])
+                            except:
+                                self.printError("Index is out of range", 58)
+                            findSuccess = True
+                elif varFrameName == "LF":
+                    pass # TODO:
+                elif varFrameName == "TF":
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
 
             elif instruct.attrib['opcode'] == "READ":
                 self.controlArgCount(instruct, 2)
@@ -1051,6 +1117,85 @@ class interpret(printErrors):
                 self.controlArgCount(instruct, 3)
                 # <var>
                 self.controlArg(instruct[0].attrib['type'], "var", instruct[0].text)
+
+                if instruct[1].attrib['type'] == "var":
+                    varFrameName = instruct[1].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "int":
+                                    self.printError("Expected argument of type 'int'", 53)
+                                self.controlArg(elem.dataType, "int", elem.value, "SETCHAR")
+                                op1 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[1].attrib['type'], "int", instruct[1].text, "SETCHAR")
+                    op1 = instruct[1].text
+
+                if instruct[2].attrib['type'] == "var":
+                    self.controlArg(instruct[2].attrib['type'], "var", instruct[2].text)
+                    varFrameName = instruct[2].text.split('@', 1)
+                    findSuccess = False
+                    if varFrameName[0] == "GF":
+                        for elem in self.GlobFrame:
+                            if varFrameName[1] == elem.name[1]:
+                                if elem.dataType == None:
+                                    self.printError("Uninitialized variable " + varFrameName[1] + ".", 56)
+                                if elem.dataType != "string":
+                                    self.printError("Expected argument of type 'string'", 53)
+                                self.controlArg(elem.dataType, "string", elem.value)
+                                op2 = elem.value
+                                findSuccess = True
+                    elif varFrameName[0] == "LF":
+                        self.isFrameExist("LF")
+                        # TODO:
+                    elif varFrameName[0] == "TF":
+                        self.isFrameExist("TF")
+                        # TODO:
+                    if not findSuccess:
+                        self.printError(varFrameName[1] + " is undefined", 54)
+                else:
+                    self.controlArg(instruct[2].attrib['type'], "int", instruct[2].text)
+                    op2 = instruct[2].text
+
+                varFrameName = instruct[0].text.split('@', 1)
+                findSuccess = False
+                if varFrameName[0] == "GF":
+                    for elem in self.GlobFrame:
+                        if elem.name[1] == varFrameName[1]:
+                            if elem.value == None and elem.dataType == None:
+                                self.printError(varFrameName[1] + " is undefined", 54)
+                            if elem.dataType != "string":
+                                self.printError("Expected argument of type 'string'", 53)
+                            try:
+                                elem.value = list(elem.value)
+                                elem.value[int(op1)] = op2[0]
+                                elem.value = ''.join(elem.value)
+                            except:
+                                self.printError("Index is out of range", 58)
+                            findSuccess = True
+                elif varFrameName[0] == "LF":
+                    self.isFrameExist("LF")
+                    pass # TODO:
+                elif varFrameName[0] == "TF":
+                    self.isFrameExist("TF")
+                    pass # TODO:
+
+                if not findSuccess:
+                    self.printError(varFrameName[1] + " is undefined", 54)
+
+
 
             elif instruct.attrib['opcode'] == "TYPE":
                 self.controlArgCount(instruct, 2)
